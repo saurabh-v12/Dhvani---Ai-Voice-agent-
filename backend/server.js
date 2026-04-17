@@ -13,9 +13,15 @@ let page = null
 async function initBrowser() {
   try {
     browser = await puppeteer.launch({
-      headless: false,
-      defaultViewport: null,
-      args: ['--start-maximized']
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--single-process',
+        '--no-zygote'
+      ]
     })
 
     const pages = await browser.pages()
@@ -65,11 +71,9 @@ async function getPage() {
       return page
     }
     page = pages[pages.length - 1]
-    // Verify page is actually alive with a test evaluate
     await page.evaluate(() => document.title)
     return page
   } catch {
-    // Page is dead — open a completely fresh one
     try {
       page = await browser.newPage()
       await page.goto('https://google.com')
@@ -251,7 +255,7 @@ app.get('/status', async (req, res) => {
 
 // ── START ──
 initBrowser().then(() => {
-  app.listen(3001, () => {
-    console.log('🚀 Dhvani backend on http://localhost:3001')
+  app.listen(process.env.PORT || 3001, () => {
+    console.log(`🚀 Dhvani backend on port ${process.env.PORT || 3001}`)
   })
 })
