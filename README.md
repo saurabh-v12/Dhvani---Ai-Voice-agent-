@@ -49,15 +49,16 @@ No app download. No screen required. Just speak.
 ---
 
 ## 🏗️ Architecture
-User Voice Input (Web Speech API)
-↓
-Dhvani Frontend (React + Vite)
-↓
-Groq AI (LLaMA 3.3 70B)  ←→  Puppeteer Backend (Express)
-↓                              ↓
-Voice Response (TTS)         Real Browser Control
 
----
+```
+User Voice Input (Web Speech API)
+        ↓
+   Dhvani Frontend (React + Vite)
+        ↓
+   Groq AI (LLaMA 3.3 70B)  ←→  Puppeteer Backend (Express)
+        ↓                              ↓
+   Voice Response (TTS)         Real Browser Control
+```
 
 ## 🛠️ Tech Stack
 
