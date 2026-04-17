@@ -11,7 +11,7 @@ const STATE_META = {
 }
 
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY
-const BACKEND = 'https://dhvani-ai-voice-agent-production.up.railway.app'
+const BACKEND = 'https://dhvani-backend-1q0u.onrender.com'
 
 const QUICK_COMMANDS = [
   { label: '🌐 Open Google',  text: 'go to google.com' },
