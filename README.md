@@ -160,27 +160,6 @@ dhvani-ai/
 
 ---
 
-## 👥 Team
-
-**Team Code Verse** — HackBLR 2026
-
-| Name | Role |
-|---|---|
-| **Saurabh Vishwakarma** | Team Leader & Full Stack Developer |
-| **Shivam Kumar Sahu** | Developer |
-| **Devanshu Gaidhane** | Developer |
-| **Shreya Badge** | Developer |
-| **Anshul Thombre** | Developer |
-
----
-
-## 🏆 Hackathon
-
-- **Event:** HackBLR 2026 — Bengaluru, April 26
-- **Problem Statement:** PS-3: Voice AI Agent for Accessibility & Societal Impact
-- **Sponsors:** VAPI, Qdrant, Pathway, TRAE
-
----
 
 ## 📄 License
 
