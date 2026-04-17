@@ -48,7 +48,16 @@ No app download. No screen required. Just speak.
 
 ---
 
+## 🏗️ Architecture
+User Voice Input (Web Speech API)
+↓
+Dhvani Frontend (React + Vite)
+↓
+Groq AI (LLaMA 3.3 70B)  ←→  Puppeteer Backend (Express)
+↓                              ↓
+Voice Response (TTS)         Real Browser Control
 
+---
 
 ## 🛠️ Tech Stack
 
@@ -122,6 +131,8 @@ Open [http://localhost:5173](http://localhost:5173) in Chrome.
 ---
 
 ## 📁 Project Structure
+
+```
 dhvani-ai/
 ├── src/
 │   ├── components/
@@ -136,8 +147,7 @@ dhvani-ai/
 │   ├── server.js                 # Express + Puppeteer
 │   └── package.json
 └── package.json
-
----
+```
 
 ## 🌍 Impact
 
