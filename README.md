@@ -48,24 +48,7 @@ No app download. No screen required. Just speak.
 
 ---
 
-## 📁 Project Structure
 
-```
-dhvani-ai/
-├── src/
-│   ├── components/
-│   │   └── Orb/
-│   │       └── GlowingOrb.jsx    # 3D Three.js orb
-│   ├── pages/
-│   │   ├── Landing.jsx           # Landing page
-│   │   └── Demo.jsx              # Voice agent
-│   ├── router.jsx                # Client-side routing
-│   └── main.jsx
-├── backend/
-│   ├── server.js                 # Express + Puppeteer
-│   └── package.json
-└── package.json
-```
 
 ## 🛠️ Tech Stack
 
