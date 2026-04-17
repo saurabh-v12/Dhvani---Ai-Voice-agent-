@@ -163,9 +163,10 @@ dhvani-ai/
 
 ## 📄 License
 
-MIT License — feel free to use and build upon this project.
+Copyright © 2026 Saurabh Vishwakarma & Team Code Verse. All rights reserved.
 
----
+Unauthorized copying, distribution, or commercial use of this project 
+without explicit written permission from the author is prohibited.
 
 <div align="center">
 
