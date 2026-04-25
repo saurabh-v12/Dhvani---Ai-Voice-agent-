@@ -1,3 +1,4 @@
+require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
 const puppeteer = require('puppeteer')
@@ -9,7 +10,7 @@ app.use(express.json())
 let browser = null
 let page = null
 
-const GROQ_KEY = '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'
+const GROQ_KEY = process.env.GROQ_API_KEY
 
 // ── INIT BROWSER ──
 async function initBrowser() {
