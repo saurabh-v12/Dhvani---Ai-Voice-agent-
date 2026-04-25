@@ -13,14 +13,11 @@ const STATE_META = {
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY
 const BACKEND = 'http://localhost:3001'
 
-const QUICK_COMMANDS = [
-  { label: '🌐 Open Google',  text: 'go to google.com' },
-  { label: '📰 Read news',    text: 'go to news.google.com' },
-  { label: '📖 Read page',    text: 'read the current page' },
-  { label: '🔍 Search',       text: 'search for latest news in India' },
-  { label: '⬇️ Scroll down',  text: 'scroll down' },
-  { label: '↩️ Go back',      text: 'go back' },
-]
+const VOICE_PROFILES = {
+  woman: { names: ['Google UK English Female', 'Samantha', 'Karen', 'Moira', 'Victoria'],     rate: 0.85, pitch: 1.05 },
+  man:   { names: ['Google UK English Male', 'Daniel', 'Alex', 'Fred', 'Ralph'],               rate: 0.80, pitch: 0.85 },
+  soft:  { names: ['Google US English Female', 'Fiona', 'Tessa', 'Veena', 'Allison'],          rate: 0.75, pitch: 1.10 },
+}
 
 const askGroq = async (userMessage) => {
   const response = await fetch(
@@ -50,7 +47,6 @@ const askGroq = async (userMessage) => {
   return data.choices[0].message.content
 }
 
-// Fix 2: returns full data object so requiresConfirmation field is accessible
 const sendBrowserCommand = async (command, confirmed = false) => {
   try {
     const res = await fetch(`${BACKEND}/command`, {
@@ -70,7 +66,7 @@ const ease = [0.22, 1, 0.36, 1]
 function TopNav() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0A0A12]/70 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
+      <div className="mx-auto flex w-full max-w-6xl items-center px-6 py-4">
         <div className="flex items-center gap-3">
           <Link
             to="/"
@@ -84,7 +80,6 @@ function TopNav() {
           </Link>
           <div className="text-sm font-medium tracking-wide">Dhvani AI</div>
         </div>
-        <div className="text-xs text-white/50">Powered by Groq</div>
       </div>
     </header>
   )
@@ -133,6 +128,33 @@ function OrbStage({ state }) {
   )
 }
 
+function VoiceSelector({ voice, onChange }) {
+  const options = [
+    { key: 'woman', label: '👩 Woman' },
+    { key: 'man',   label: '👨 Man' },
+    { key: 'soft',  label: '🌸 Soft' },
+  ]
+  return (
+    <div className="mt-5 flex items-center gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt.key}
+          type="button"
+          onClick={() => onChange(opt.key)}
+          className={
+            'rounded-lg border px-3 py-1.5 text-xs font-medium transition ' +
+            (voice === opt.key
+              ? 'border-[#7C3AED] bg-[#7C3AED]/20 text-[#C4B5FD]'
+              : 'border-white/10 bg-[#12111A]/80 text-white/50 hover:text-white/80')
+          }
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function StatusText({ state, browserStatus }) {
   const cfg = ORB_STATE_CONFIG[state] || ORB_STATE_CONFIG.idle
   const meta = STATE_META[state] || STATE_META.idle
@@ -153,22 +175,16 @@ function StatusText({ state, browserStatus }) {
   )
 }
 
-function QuickCommands({ onSelect, disabled }) {
+function WakeWordHint({ active }) {
   return (
-    <div className="mt-6 grid w-full grid-cols-2 gap-2">
-      {QUICK_COMMANDS.map((cmd) => (
-        <motion.button
-          key={cmd.label}
-          type="button"
-          disabled={disabled}
-          onClick={() => onSelect(cmd.text)}
-          whileTap={{ scale: 0.97 }}
-          className="rounded-xl border border-white/10 bg-[#12111A]/80 px-3 py-2.5 text-sm font-medium text-white/85 backdrop-blur transition hover:border-[#7C3AED]/60 hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {cmd.label}
-        </motion.button>
-      ))}
-    </div>
+    <motion.div
+      className="mt-2 flex items-center gap-1.5 text-xs text-white/30"
+      animate={{ opacity: active ? [0.4, 0.7, 0.4] : 0.3 }}
+      transition={active ? { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
+    >
+      <span className={`h-1 w-1 rounded-full ${active ? 'bg-[#7C3AED]' : 'bg-white/20'}`} />
+      Say &quot;Hey Friday&quot; to activate
+    </motion.div>
   )
 }
 
@@ -211,6 +227,8 @@ export default function Demo() {
   const [toasts, setToasts] = useState([])
   const [browserStatus, setBrowserStatus] = useState(null)
   const [backendReady, setBackendReady] = useState(false)
+  const [voice, setVoice] = useState('woman')
+  const [wakeActive, setWakeActive] = useState(false)
 
   const recognitionRef = useRef(null)
   const isRecognizingRef = useRef(false)
@@ -219,11 +237,15 @@ export default function Demo() {
   const orbStateRef = useRef('idle')
   const pipelineRef = useRef(null)
   const backendReadyRef = useRef(false)
-  const pendingCommandRef = useRef(null) // Fix 2: stores original command awaiting confirmation
+  const pendingCommandRef = useRef(null)
+  const wakeRecognitionRef = useRef(null)
+  const wakeActiveRef = useRef(false)
+  const voiceRef = useRef('woman')
 
   useEffect(() => { mutedRef.current = muted }, [muted])
   useEffect(() => { orbStateRef.current = orbState }, [orbState])
   useEffect(() => { backendReadyRef.current = backendReady }, [backendReady])
+  useEffect(() => { voiceRef.current = voice }, [voice])
 
   // ── POLL BACKEND STATUS ──
   useEffect(() => {
@@ -263,16 +285,18 @@ export default function Demo() {
       if (!('speechSynthesis' in window)) { resolve(); return }
       window.speechSynthesis.cancel()
       const utt = new SpeechSynthesisUtterance(text)
-      utt.rate = 0.88
-      utt.pitch = 1.05
+      const profile = VOICE_PROFILES[voiceRef.current] || VOICE_PROFILES.woman
+      utt.rate = profile.rate
+      utt.pitch = profile.pitch
       utt.volume = 1
       const voices = window.speechSynthesis.getVoices()
-      const preferred = voices.find(v =>
-        v.name.includes('Google UK English Female') ||
-        v.name.includes('Samantha') ||
-        (v.lang.startsWith('en') && v.localService)
-      )
-      if (preferred) utt.voice = preferred
+      let matched = null
+      for (const name of profile.names) {
+        matched = voices.find(v => v.name.includes(name))
+        if (matched) break
+      }
+      if (!matched) matched = voices.find(v => v.lang.startsWith('en') && v.localService)
+      if (matched) utt.voice = matched
       const timeout = setTimeout(resolve, (text.length / 10 * 1000) + 3000)
       utt.onend = () => { clearTimeout(timeout); resolve() }
       utt.onerror = () => { clearTimeout(timeout); resolve() }
@@ -280,7 +304,6 @@ export default function Demo() {
     })
   }, [])
 
-  // Fix 2: restarts mic after speaking a confirmation question
   const autoRestartMic = useCallback(() => {
     if (!recognitionRef.current || isRecognizingRef.current) return
     try {
@@ -297,7 +320,6 @@ export default function Demo() {
     try {
       const lowerText = text.toLowerCase().trim()
 
-      // ── FIX 2: CONFIRMATION FLOW ──
       if (pendingCommandRef.current) {
         const isYes = ['yes', 'yeah', 'yep', 'yup', 'ok', 'okay', 'sure', 'confirm', 'do it'].some(w => lowerText.includes(w))
         const isNo  = ['no', 'nope', 'cancel', 'stop', 'nevermind', 'never mind', 'abort'].some(w => lowerText.includes(w))
@@ -326,7 +348,6 @@ export default function Demo() {
           addToHistory('ai', 'Cancelled.')
           if (!mutedRef.current) { setOrbState('speaking'); await speakText('Cancelled.') }
         } else {
-          // Unclear response — ask again and re-listen
           const clarify = 'Please say yes to confirm, or no to cancel.'
           addToHistory('user', text)
           addToHistory('ai', clarify)
@@ -342,14 +363,12 @@ export default function Demo() {
         return
       }
 
-      // ── NORMAL FLOW ──
       let groqInput = text
 
       if (backendReadyRef.current) {
         const data = await sendBrowserCommand(text, false)
 
         if (data) {
-          // Fix 2: risky action — speak question and wait for yes/no
           if (data.requiresConfirmation) {
             pendingCommandRef.current = text
             addToHistory('user', text)
@@ -358,7 +377,7 @@ export default function Demo() {
               setOrbState('speaking')
               await speakText(data.result)
               autoRestartMic()
-              return // stay listening — don't go idle
+              return
             }
             setOrbState('idle')
             return
@@ -393,6 +412,78 @@ export default function Demo() {
 
   useEffect(() => { pipelineRef.current = runPipeline }, [runPipeline])
 
+  // ── WAKE WORD DETECTION ──
+  const startWakeListening = useCallback(() => {
+    if (isRecognizingRef.current) return
+    if (wakeActiveRef.current) return
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SR) return
+
+    try {
+      const wr = new SR()
+      wr.lang = 'en-IN'
+      wr.continuous = true
+      wr.interimResults = true
+      wr.maxAlternatives = 1
+
+      wr.onstart = () => {
+        wakeActiveRef.current = true
+        setWakeActive(true)
+      }
+
+      wr.onresult = (e) => {
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const t = e.results[i][0].transcript.toLowerCase()
+          if (t.includes('friday')) {
+            try { wr.stop() } catch { /* noop */ }
+            wakeActiveRef.current = false
+            setWakeActive(false)
+            wakeRecognitionRef.current = null
+            setTimeout(() => {
+              if (orbStateRef.current === 'idle' && !isRecognizingRef.current && recognitionRef.current) {
+                try {
+                  recognitionRef.current.start()
+                  setOrbState('listening')
+                } catch { /* noop */ }
+              }
+            }, 200)
+            return
+          }
+        }
+      }
+
+      wr.onend = () => {
+        wakeActiveRef.current = false
+        setWakeActive(false)
+        wakeRecognitionRef.current = null
+        if (!isRecognizingRef.current) {
+          setTimeout(() => startWakeListening(), 1000)
+        }
+      }
+
+      wr.onerror = (e) => {
+        wakeActiveRef.current = false
+        setWakeActive(false)
+        wakeRecognitionRef.current = null
+        const delay = (e.error === 'no-speech' || e.error === 'aborted') ? 500 : 2000
+        setTimeout(() => startWakeListening(), delay)
+      }
+
+      wakeRecognitionRef.current = wr
+      wr.start()
+    } catch { /* noop */ }
+  }, [])
+
+  useEffect(() => {
+    const t = setTimeout(() => startWakeListening(), 1500)
+    return () => {
+      clearTimeout(t)
+      if (wakeRecognitionRef.current) {
+        try { wakeRecognitionRef.current.stop() } catch { /* noop */ }
+      }
+    }
+  }, [startWakeListening])
+
   // ── SPEECH RECOGNITION ──
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -425,6 +516,7 @@ export default function Demo() {
       transcriptRef.current = ''
       if (!text) { setOrbState('idle'); return }
       pipelineRef.current?.(text)
+      setTimeout(() => startWakeListening(), 500)
     }
 
     r.onerror = (e) => {
@@ -434,16 +526,24 @@ export default function Demo() {
       if (e.error === 'not-allowed') pushToast('Allow microphone access in Chrome settings')
       else if (e.error === 'network') pushToast('Network error — check connection')
       else if (e.error !== 'no-speech') pushToast('Mic error: ' + e.error)
+      setTimeout(() => startWakeListening(), 500)
     }
 
     recognitionRef.current = r
     return () => { clearTimeout(safetyTimeout); recognitionRef.current = null }
-  }, [pushToast])
+  }, [pushToast, startWakeListening])
 
   const handleMicClick = () => {
     if (orbStateRef.current !== 'idle') return
     if (isRecognizingRef.current) return
     if (!recognitionRef.current) { pushToast('Use Chrome for voice features'); return }
+    // pause wake recognition while main mic is active
+    if (wakeRecognitionRef.current) {
+      try { wakeRecognitionRef.current.stop() } catch { /* noop */ }
+      wakeRecognitionRef.current = null
+      wakeActiveRef.current = false
+      setWakeActive(false)
+    }
     try {
       recognitionRef.current.start()
       setOrbState('listening')
@@ -465,11 +565,6 @@ export default function Demo() {
     })
   }
 
-  const handleQuickCommand = (text) => {
-    if (orbStateRef.current !== 'idle') return
-    runPipeline(text)
-  }
-
   return (
     <div className="relative min-h-screen bg-[#0A0A12] text-white">
       <div className="pointer-events-none fixed inset-0 dhvani-dotgrid" />
@@ -486,8 +581,9 @@ export default function Demo() {
           <div className="flex w-full flex-col items-center" style={{ maxWidth: 420 }}>
             <VersionBadge />
             <OrbStage state={orbState} />
+            <VoiceSelector voice={voice} onChange={setVoice} />
             <StatusText state={orbState} browserStatus={browserStatus} />
-            <QuickCommands onSelect={handleQuickCommand} disabled={orbState !== 'idle'} />
+            <WakeWordHint active={wakeActive} />
             <ConversationBubbles messages={history.slice(-3)} />
           </div>
         </main>
