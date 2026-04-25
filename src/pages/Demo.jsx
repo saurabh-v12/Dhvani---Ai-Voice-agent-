@@ -50,15 +50,16 @@ const askGroq = async (userMessage) => {
   return data.choices[0].message.content
 }
 
-const sendBrowserCommand = async (command) => {
+// Fix 2: returns full data object so requiresConfirmation field is accessible
+const sendBrowserCommand = async (command, confirmed = false) => {
   try {
     const res = await fetch(`${BACKEND}/command`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ command })
+      body: JSON.stringify({ command, confirmed })
     })
     const data = await res.json()
-    return data.result || data.error || null
+    return data
   } catch {
     return null
   }
@@ -218,6 +219,7 @@ export default function Demo() {
   const orbStateRef = useRef('idle')
   const pipelineRef = useRef(null)
   const backendReadyRef = useRef(false)
+  const pendingCommandRef = useRef(null) // Fix 2: stores original command awaiting confirmation
 
   useEffect(() => { mutedRef.current = muted }, [muted])
   useEffect(() => { orbStateRef.current = orbState }, [orbState])
@@ -278,26 +280,99 @@ export default function Demo() {
     })
   }, [])
 
+  // Fix 2: restarts mic after speaking a confirmation question
+  const autoRestartMic = useCallback(() => {
+    if (!recognitionRef.current || isRecognizingRef.current) return
+    try {
+      recognitionRef.current.start()
+      setOrbState('listening')
+    } catch { /* recognition may already be starting */ }
+  }, [])
+
   // ── MAIN PIPELINE ──
   const runPipeline = useCallback(async (text) => {
     if (!text.trim()) return
     setOrbState('thinking')
 
     try {
+      const lowerText = text.toLowerCase().trim()
+
+      // ── FIX 2: CONFIRMATION FLOW ──
+      if (pendingCommandRef.current) {
+        const isYes = ['yes', 'yeah', 'yep', 'yup', 'ok', 'okay', 'sure', 'confirm', 'do it'].some(w => lowerText.includes(w))
+        const isNo  = ['no', 'nope', 'cancel', 'stop', 'nevermind', 'never mind', 'abort'].some(w => lowerText.includes(w))
+
+        if (isYes) {
+          const commandToConfirm = pendingCommandRef.current
+          pendingCommandRef.current = null
+          addToHistory('user', text)
+          if (backendReadyRef.current) {
+            const data = await sendBrowserCommand(commandToConfirm, true)
+            if (data?.result) {
+              try {
+                const s = await fetch(`${BACKEND}/status`)
+                const sd = await s.json()
+                if (sd.title) setBrowserStatus(sd.title)
+              } catch { /* noop */ }
+              const groqInput = `The user confirmed: "${commandToConfirm}". Result: ${data.result}. Summarise in 1-2 warm friendly sentences.`
+              const reply = await askGroq(groqInput)
+              addToHistory('ai', reply)
+              if (!mutedRef.current) { setOrbState('speaking'); await speakText(reply) }
+            }
+          }
+        } else if (isNo) {
+          pendingCommandRef.current = null
+          addToHistory('user', text)
+          addToHistory('ai', 'Cancelled.')
+          if (!mutedRef.current) { setOrbState('speaking'); await speakText('Cancelled.') }
+        } else {
+          // Unclear response — ask again and re-listen
+          const clarify = 'Please say yes to confirm, or no to cancel.'
+          addToHistory('user', text)
+          addToHistory('ai', clarify)
+          if (!mutedRef.current) {
+            setOrbState('speaking')
+            await speakText(clarify)
+            autoRestartMic()
+            return
+          }
+        }
+
+        setOrbState('idle')
+        return
+      }
+
+      // ── NORMAL FLOW ──
       let groqInput = text
 
-      // Send to Puppeteer backend if running
       if (backendReadyRef.current) {
-        const browserResult = await sendBrowserCommand(text)
-        if (browserResult) {
-          // Refresh browser status
-          try {
-            const s = await fetch(`${BACKEND}/status`)
-            const sd = await s.json()
-            if (sd.title) setBrowserStatus(sd.title)
-          } catch { /* noop */ }
+        const data = await sendBrowserCommand(text, false)
 
-          groqInput = `The user said: "${text}". The browser action result: ${browserResult}. Summarise what happened in 1-2 warm friendly sentences for a visually impaired user. Be specific about what page or action occurred.`
+        if (data) {
+          // Fix 2: risky action — speak question and wait for yes/no
+          if (data.requiresConfirmation) {
+            pendingCommandRef.current = text
+            addToHistory('user', text)
+            addToHistory('ai', data.result)
+            if (!mutedRef.current) {
+              setOrbState('speaking')
+              await speakText(data.result)
+              autoRestartMic()
+              return // stay listening — don't go idle
+            }
+            setOrbState('idle')
+            return
+          }
+
+          if (data.result) {
+            try {
+              const s = await fetch(`${BACKEND}/status`)
+              const sd = await s.json()
+              if (sd.title) setBrowserStatus(sd.title)
+            } catch { /* noop */ }
+
+            groqInput = `The user said: "${text}". The browser action result: ${data.result}. Summarise what happened in 1-2 warm friendly sentences for a visually impaired user. Be specific about what page or action occurred.`
+          }
         }
       }
 
@@ -314,7 +389,7 @@ export default function Demo() {
     }
 
     setOrbState('idle')
-  }, [addToHistory, speakText, pushToast])
+  }, [addToHistory, speakText, pushToast, autoRestartMic])
 
   useEffect(() => { pipelineRef.current = runPipeline }, [runPipeline])
 

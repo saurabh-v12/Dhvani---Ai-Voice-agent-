@@ -86,6 +86,23 @@ async function getScreenshot(p) {
   } catch { return null }
 }
 
+// ── FIX 1: EXTRACT PAGE STRUCTURE ──
+async function extractPageStructure(p) {
+  try {
+    return await p.evaluate(() => {
+      const mainHeading = document.querySelector('h1')?.innerText?.trim() || ''
+      const linkCount = document.querySelectorAll('a[href]').length
+      const buttonCount = document.querySelectorAll('button, input[type=submit], input[type=button], [role=button]').length
+      const formCount = document.querySelectorAll('form').length
+      const inputCount = document.querySelectorAll('input, textarea, select').length
+      const topActions = Array.from(document.querySelectorAll('button, [role=button]'))
+        .map(el => el.innerText?.trim() || el.getAttribute('aria-label') || '')
+        .filter(Boolean).slice(0, 5)
+      return { mainHeading, linkCount, buttonCount, formCount, inputCount, topActions }
+    })
+  } catch { return null }
+}
+
 // ── GROQ DIRECT ANSWER ──
 async function askGroqDirect(userCommand) {
   try {
@@ -111,24 +128,30 @@ async function askGroqDirect(userCommand) {
   } catch { return null }
 }
 
-// ── GROQ VISION ──
-async function askGroqVision(screenshot, userCommand, actionDone) {
+// ── GROQ VISION (Fix 1: accepts optional pageContext) ──
+async function askGroqVision(screenshot, userCommand, actionDone, pageContext = null) {
   try {
+    let contextText = `User said: "${userCommand}". Action taken: ${actionDone}. Describe what you see on screen and confirm what happened.`
+    let systemPrompt = `You are Dhvani AI, a voice assistant for blind users. Give ONE short sentence response only. Maximum 15 words. Be direct and specific. No filler words. No markdown.`
+
+    if (pageContext) {
+      const { mainHeading, linkCount, buttonCount, formCount, topActions } = pageContext
+      contextText += ` Page structure: ${mainHeading ? `Heading: "${mainHeading}". ` : ''}${linkCount} links, ${buttonCount} buttons, ${formCount} form${formCount !== 1 ? 's' : ''}. ${topActions.length ? `Top actions: ${topActions.join(', ')}.` : ''} Also tell the user 2 specific things they can do on this page.`
+      systemPrompt = `You are Dhvani AI, a voice assistant for blind users. Describe what the user sees and tell them 2 specific actions they can take. Maximum 2 sentences. Be helpful and specific. No markdown.`
+    }
+
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
       body: JSON.stringify({
         model: 'meta-llama/llama-4-scout-17b-16e-instruct',
         messages: [
-          {
-            role: 'system',
-            content: `You are Dhvani AI, a voice assistant for blind users. Give ONE short sentence response only. Maximum 15 words. Be direct and specific. No filler words. No markdown.`
-          },
+          { role: 'system', content: systemPrompt },
           {
             role: 'user',
             content: [
               { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${screenshot}` } },
-              { type: 'text', text: `User said: "${userCommand}". Action taken: ${actionDone}. Describe what you see on screen and confirm what happened.` }
+              { type: 'text', text: contextText }
             ]
           }
         ],
@@ -144,7 +167,7 @@ async function askGroqVision(screenshot, userCommand, actionDone) {
 
 // ── COMMAND HANDLER ──
 app.post('/command', async (req, res) => {
-  const { command } = req.body
+  const { command, confirmed } = req.body
   const cmd = command.toLowerCase()
 
   // ── DIRECT AI ANSWER (no browser needed) ──
@@ -153,7 +176,11 @@ app.post('/command', async (req, res) => {
     'play', 'watch', 'listen', 'scroll', 'click', 'tap', 'type',
     'pause', 'mute', 'unmute', 'volume', 'skip', 'rewind',
     'fullscreen', 'back', 'refresh', 'reload', 'read page',
-    'read the page', 'describe the page', 'where am i'
+    'read the page', 'describe the page', 'where am i',
+    // Fix 2 — risky commands need to reach the browser chain
+    'submit', 'buy', 'purchase', 'delete', 'pay', 'checkout', 'order',
+    // Fix 3 — page discovery commands
+    "what can i do", "what's available", "what are my options"
   ]
   const directTriggers = [
     'what is', 'what are', 'who is', 'who are', 'how much', 'how many',
@@ -177,6 +204,18 @@ app.post('/command', async (req, res) => {
   try {
     const currentUrl = p.url()
     let result = ''
+    let pageContext = null
+
+    // ── FIX 2: RISKY COMMAND CONFIRMATION (first in chain) ──
+    const riskyKeywords = ['submit', 'buy', 'purchase', 'delete', 'pay', 'checkout', 'order']
+    const isRisky = riskyKeywords.some(k => cmd.includes(k))
+    if (isRisky && !confirmed) {
+      const action = riskyKeywords.find(k => cmd.includes(k))
+      return res.json({
+        result: `Are you sure you want to ${action}? Say yes to confirm, or no to cancel.`,
+        requiresConfirmation: true
+      })
+    }
 
     // ── UNMUTE ──
     if (cmd.includes('unmute')) {
@@ -248,7 +287,7 @@ app.post('/command', async (req, res) => {
       result = clicked ? `Playing: ${clicked}` : 'Could not find a video to play.'
     }
 
-    // ── NAVIGATE / OPEN ──
+    // ── NAVIGATE / OPEN (Fix 1: extract page structure after navigation) ──
     else if (cmd.includes('go to') || cmd.includes('open') || cmd.includes('navigate') || cmd.includes('visit')) {
       const sites = {
         'youtube': 'https://youtube.com', 'google': 'https://google.com',
@@ -271,12 +310,13 @@ app.post('/command', async (req, res) => {
       if (url) {
         await p.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 })
         result = `Opened ${await safeTitle(p)}`
+        pageContext = await extractPageStructure(p)
       } else {
         result = 'Could not find that website.'
       }
     }
 
-    // ── SEARCH / PLAY / WATCH / LISTEN ──
+    // ── SEARCH / PLAY / WATCH / LISTEN (Fix 1: extract page structure after navigation) ──
     else if (cmd.includes('search') || cmd.includes('find') || cmd.includes('play') || cmd.includes('watch') || cmd.includes('listen')) {
       const query = cmd.replace(/search for|search on youtube|search|find on youtube|find|play on youtube|play|watch|listen to|listen/g, '').trim()
       if (query) {
@@ -289,9 +329,105 @@ app.post('/command', async (req, res) => {
           await p.goto(`https://google.com/search?q=${encodeURIComponent(query)}`, { waitUntil: 'domcontentloaded', timeout: 15000 })
           result = `Searched Google for ${query}`
         }
+        pageContext = await extractPageStructure(p)
       } else {
         result = 'What would you like to search for?'
       }
+    }
+
+    // ── FIX 4: READ HEADINGS ──
+    else if (cmd.includes('read headings')) {
+      const headings = await p.evaluate(() =>
+        Array.from(document.querySelectorAll('h1, h2, h3'))
+          .map(el => el.innerText?.trim()).filter(Boolean)
+      ).catch(() => [])
+      if (headings.length) {
+        const answer = await askGroqDirect(`List these page headings naturally in one sentence for a blind user: ${headings.join('. ')}`)
+        return res.json({ result: answer || headings.join('. ') })
+      }
+      return res.json({ result: 'No headings found on this page.' })
+    }
+
+    // ── FIX 4: READ LINKS ──
+    else if (cmd.includes('read links')) {
+      const links = await p.evaluate(() =>
+        Array.from(document.querySelectorAll('a[href]'))
+          .map(el => el.innerText?.trim()).filter(t => t && t.length > 1).slice(0, 10)
+      ).catch(() => [])
+      if (links.length) {
+        const answer = await askGroqDirect(`List these page links naturally in 1-2 sentences for a blind user: ${links.join(', ')}`)
+        return res.json({ result: answer || links.join(', ') })
+      }
+      return res.json({ result: 'No links found on this page.' })
+    }
+
+    // ── FIX 4: READ BUTTONS ──
+    else if (cmd.includes('read buttons')) {
+      const buttons = await p.evaluate(() =>
+        Array.from(document.querySelectorAll('button, input[type=submit], input[type=button], [role=button]'))
+          .map(el => el.innerText?.trim() || el.getAttribute('aria-label') || el.value || '')
+          .filter(Boolean)
+      ).catch(() => [])
+      if (buttons.length) {
+        const answer = await askGroqDirect(`List these clickable buttons naturally in 1-2 sentences for a blind user: ${buttons.join(', ')}`)
+        return res.json({ result: answer || buttons.join(', ') })
+      }
+      return res.json({ result: 'No buttons found on this page.' })
+    }
+
+    // ── FIX 4: READ FORM ──
+    else if (cmd.includes('read form')) {
+      const fields = await p.evaluate(() =>
+        Array.from(document.querySelectorAll('input, textarea, select'))
+          .map(el => {
+            const label = document.querySelector(`label[for="${el.id}"]`)?.innerText?.trim()
+            return label || el.getAttribute('aria-label') || el.getAttribute('placeholder') || el.type || ''
+          }).filter(Boolean)
+      ).catch(() => [])
+      if (fields.length) {
+        const answer = await askGroqDirect(`Describe these form fields naturally in 1-2 sentences for a blind user: ${fields.join(', ')}`)
+        return res.json({ result: answer || fields.join(', ') })
+      }
+      return res.json({ result: 'No form fields found on this page.' })
+    }
+
+    // ── FIX 4: READ PARAGRAPH ──
+    else if (cmd.includes('read paragraph')) {
+      const paras = await p.evaluate(() =>
+        Array.from(document.querySelectorAll('p'))
+          .map(el => el.innerText?.trim()).filter(t => t && t.length > 40).slice(0, 3)
+      ).catch(() => [])
+      if (paras.length) {
+        return res.json({ result: paras.join(' ').slice(0, 600) })
+      }
+      return res.json({ result: 'No paragraph text found on this page.' })
+    }
+
+    // ── FIX 3: WHAT CAN I DO HERE ──
+    else if (cmd.includes('what can i do') || cmd.includes("what's available") ||
+             cmd.includes('what are my options') ||
+             (cmd.includes('help') && !cmd.includes('help me'))) {
+      const context = await p.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll('button, [role=button]'))
+          .map(el => el.innerText?.trim() || el.getAttribute('aria-label') || '')
+          .filter(Boolean).slice(0, 8)
+        const links = Array.from(document.querySelectorAll('a[href]'))
+          .map(el => el.innerText?.trim()).filter(t => t && t.length > 1).slice(0, 5)
+        const fields = Array.from(document.querySelectorAll('input, textarea, select'))
+          .map(el => el.getAttribute('aria-label') || el.getAttribute('placeholder') || el.type || '')
+          .filter(Boolean)
+        const headings = Array.from(document.querySelectorAll('h1, h2'))
+          .map(h => h.innerText?.trim()).filter(Boolean).slice(0, 3)
+        return { buttons, links, fields, headings }
+      }).catch(() => null)
+
+      if (context) {
+        const { buttons, links, fields, headings } = context
+        const contextStr = `Page: ${headings.join(', ') || 'unknown'}. Buttons: ${buttons.join(', ') || 'none'}. Links: ${links.join(', ') || 'none'}. Form fields: ${fields.join(', ') || 'none'}. Summarise in 2 warm sentences what a blind user can do on this page right now. No markdown. Speak naturally.`
+        const answer = await askGroqDirect(contextStr)
+        return res.json({ result: answer || 'I could not read the available actions on this page.' })
+      }
+      return res.json({ result: 'Could not read the page structure.' })
     }
 
     // ── READ PAGE ──
@@ -359,11 +495,11 @@ app.post('/command', async (req, res) => {
       return res.json({ result: answer || `I am on ${await safeTitle(p)}. I can open websites, search, play videos, control volume, pause, mute, skip, read pages, click, and scroll.` })
     }
 
-    // ── VISION: Screenshot + Groq sees the page ──
+    // ── VISION: Screenshot + Groq sees the page (pageContext enriches navigation responses) ──
     await new Promise(r => setTimeout(r, 800))
     const screenshot = await getScreenshot(p)
     if (screenshot) {
-      const visionResult = await askGroqVision(screenshot, command, result)
+      const visionResult = await askGroqVision(screenshot, command, result, pageContext)
       if (visionResult) result = visionResult
     }
 
