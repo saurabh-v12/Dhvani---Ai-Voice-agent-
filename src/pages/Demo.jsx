@@ -11,7 +11,7 @@ const STATE_META = {
 }
 
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY
-const BACKEND = 'https://dhvani-backend-1q0u.onrender.com'
+const BACKEND = 'http://localhost:3001'
 
 const QUICK_COMMANDS = [
   { label: '🌐 Open Google',  text: 'go to google.com' },
