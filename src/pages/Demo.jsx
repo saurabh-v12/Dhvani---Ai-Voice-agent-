@@ -14,9 +14,45 @@ const API_KEY = import.meta.env.VITE_GROQ_API_KEY
 const BACKEND = 'http://localhost:3001'
 
 const VOICE_PROFILES = {
-  woman: { names: ['Google UK English Female', 'Samantha', 'Karen', 'Moira', 'Victoria'],     rate: 0.85, pitch: 1.05 },
-  man:   { names: ['Google UK English Male', 'Daniel', 'Alex', 'Fred', 'Ralph'],               rate: 0.80, pitch: 0.85 },
-  soft:  { names: ['Google US English Female', 'Fiona', 'Tessa', 'Veena', 'Allison'],          rate: 0.75, pitch: 1.10 },
+  woman: { rate: 0.88, pitch: 1.05 },
+  man:   { rate: 0.80, pitch: 0.85 },
+  soft:  { rate: 0.75, pitch: 1.15 },
+}
+
+const MALE_VOICE_NAMES = ['Daniel', 'Alex', 'Fred', 'Ralph', 'Google UK English Male', 'Microsoft David', 'David', 'Mark', 'Tom']
+
+function pickVoice(voices, key) {
+  if (!voices.length) return null
+  if (key === 'woman') {
+    return (
+      voices.find(v => v.name === 'Google UK English Female') ||
+      voices.find(v => v.name.includes('Microsoft Zira') && !v.name.includes('Desktop')) ||
+      voices.find(v => v.name.includes('Samantha')) ||
+      voices.find(v => v.lang.startsWith('en') && !MALE_VOICE_NAMES.some(n => v.name.includes(n))) ||
+      null
+    )
+  }
+  if (key === 'man') {
+    return (
+      voices.find(v => v.name === 'Google UK English Male') ||
+      voices.find(v => v.name.includes('Microsoft David')) ||
+      voices.find(v => v.name.includes('Daniel')) ||
+      voices.find(v => v.name.includes('Alex')) ||
+      voices.find(v => (v.lang === 'en-GB' || v.lang === 'en-US') && v.localService) ||
+      null
+    )
+  }
+  if (key === 'soft') {
+    return (
+      voices.find(v => v.name === 'Google US English Female') ||
+      voices.find(v => v.name.includes('Microsoft Zira Desktop')) ||
+      voices.find(v => v.name.includes('Karen')) ||
+      voices.find(v => v.name.includes('Fiona')) ||
+      voices.find(v => v.lang === 'en-US' && !MALE_VOICE_NAMES.some(n => v.name.includes(n))) ||
+      null
+    )
+  }
+  return null
 }
 
 const askGroq = async (userMessage) => {
@@ -241,11 +277,22 @@ export default function Demo() {
   const wakeRecognitionRef = useRef(null)
   const wakeActiveRef = useRef(false)
   const voiceRef = useRef('woman')
+  const voicesRef = useRef([])
 
   useEffect(() => { mutedRef.current = muted }, [muted])
   useEffect(() => { orbStateRef.current = orbState }, [orbState])
   useEffect(() => { backendReadyRef.current = backendReady }, [backendReady])
   useEffect(() => { voiceRef.current = voice }, [voice])
+
+  useEffect(() => {
+    const loadVoices = () => {
+      voicesRef.current = window.speechSynthesis.getVoices()
+      console.log('Available voices:', voicesRef.current.map(v => v.name))
+    }
+    window.speechSynthesis.addEventListener('voiceschanged', loadVoices)
+    loadVoices()
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', loadVoices)
+  }, [])
 
   // ── POLL BACKEND STATUS ──
   useEffect(() => {
@@ -289,14 +336,9 @@ export default function Demo() {
       utt.rate = profile.rate
       utt.pitch = profile.pitch
       utt.volume = 1
-      const voices = window.speechSynthesis.getVoices()
-      let matched = null
-      for (const name of profile.names) {
-        matched = voices.find(v => v.name.includes(name))
-        if (matched) break
-      }
-      if (!matched) matched = voices.find(v => v.lang.startsWith('en') && v.localService)
-      if (matched) utt.voice = matched
+      const preferred = pickVoice(voicesRef.current, voiceRef.current)
+      console.log('Selected voice:', preferred?.name || 'default')
+      if (preferred) utt.voice = preferred
       const timeout = setTimeout(resolve, (text.length / 10 * 1000) + 3000)
       utt.onend = () => { clearTimeout(timeout); resolve() }
       utt.onerror = () => { clearTimeout(timeout); resolve() }
