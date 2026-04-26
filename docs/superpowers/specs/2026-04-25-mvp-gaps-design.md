@@ -1,4 +1,4 @@
-# Dhvani AI — MVP Gap Fixes Design Spec
+# Friday AI — MVP Gap Fixes Design Spec
 **Date:** 2026-04-25  
 **Author:** Saurabh Vishwakarma / Team Code Verse  
 **Approach:** Minimal Surgery (Approach 1)
@@ -7,7 +7,7 @@
 
 ## Overview
 
-Four targeted fixes to close MVP accessibility gaps in Dhvani AI. All changes are in `backend/server.js` and `src/pages/Demo.jsx`. No new dependencies. No new routes except the confirmation flag on the existing `/command` endpoint.
+Four targeted fixes to close MVP accessibility gaps in Friday AI. All changes are in `backend/server.js` and `src/pages/Demo.jsx`. No new dependencies. No new routes except the confirmation flag on the existing `/command` endpoint.
 
 ---
 
@@ -50,7 +50,7 @@ Describe what the user sees AND list 2-3 specific actions they can take right no
 ## Fix 2 — Confirmation Layer for Risky Actions
 
 ### Goal
-Before executing irreversible actions (submit, buy, delete, pay, etc.), Dhvani asks for confirmation. User says "yes" to proceed or "no" to cancel.
+Before executing irreversible actions (submit, buy, delete, pay, etc.), Friday asks for confirmation. User says "yes" to proceed or "no" to cancel.
 
 ### Implementation — `server.js`
 
@@ -115,7 +115,7 @@ const pendingCommandRef = useRef(null)
 ## Fix 3 — "What Can I Do Here" Command
 
 ### Goal
-User says "what can I do" / "what's available" / "help" and Dhvani reads out a natural summary of interactive elements on the current page.
+User says "what can I do" / "what's available" / "help" and Friday reads out a natural summary of interactive elements on the current page.
 
 ### Implementation — `server.js`
 

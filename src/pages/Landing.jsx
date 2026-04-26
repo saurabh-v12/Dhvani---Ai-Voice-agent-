@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+﻿import { motion } from 'framer-motion'
 import GlowingOrb from '../components/Orb/GlowingOrb.jsx'
 import { Link } from '../router.jsx'
 
@@ -82,14 +82,14 @@ function FeatureCard({ title, desc, gradient, accent }) {
 export default function Landing() {
   return (
     <div className="min-h-screen bg-[#0A0A12] text-white">
-      <div className="pointer-events-none fixed inset-0 dhvani-dotgrid" />
+      <div className="pointer-events-none fixed inset-0 friday-dotgrid" />
 
       <header className="sticky top-0 z-50 border-b border-white/5 bg-[#0A0A12]/70 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#7C3AED] via-[#DB2777] to-[#0EA5E9]" />
             <div className="leading-tight">
-              <div className="text-sm font-medium tracking-wide">Dhvani AI</div>
+              <div className="text-sm font-medium tracking-wide">Friday AI</div>
               <div className="text-xs text-white/60">Voice-first accessibility agent</div>
             </div>
           </div>
@@ -140,7 +140,7 @@ export default function Landing() {
             variants={fadeUp}
             className="mt-5 max-w-2xl text-base leading-relaxed text-white/70 md:text-lg"
           >
-            Dhvani AI is a voice-first accessibility agent designed for visually impaired users—fast, calm, and reliable. It reads, describes, and guides with a conversational UI built around confidence.
+            Friday AI is a voice-first accessibility agent designed for visually impaired users—fast, calm, and reliable. It reads, describes, and guides with a conversational UI built around confidence.
           </motion.p>
 
           <motion.div variants={fadeUp} className="relative mt-14 flex items-center justify-center">
@@ -213,7 +213,7 @@ export default function Landing() {
             <div>
               <h2 className="text-2xl font-medium tracking-tight md:text-3xl">Built for trust, speed, and clarity</h2>
               <p className="mt-3 max-w-2xl text-white/70">
-                A voice-first interface shouldn’t feel like a chatbot. Dhvani keeps the user grounded with strong states, minimal cognitive load, and high-contrast visuals.
+                A voice-first interface shouldn’t feel like a chatbot. Friday keeps the user grounded with strong states, minimal cognitive load, and high-contrast visuals.
               </p>
             </div>
           </motion.div>
@@ -252,12 +252,12 @@ export default function Landing() {
           <div>
             <h2 className="text-2xl font-medium tracking-tight md:text-3xl">How it works</h2>
             <p className="mt-3 text-white/70">
-              Dhvani centers the experience around a living orb that reacts to mic state, and a conversation log that stays readable in one glance.
+              Friday centers the experience around a living orb that reacts to mic state, and a conversation log that stays readable in one glance.
             </p>
 
             <div className="mt-8 space-y-4">
               <div className="rounded-2xl border border-white/10 bg-[#12111A]/80 p-6 backdrop-blur">
-                <div className="text-sm font-medium">1. Tap or say “Hey Dhvani”</div>
+                <div className="text-sm font-medium">1. Tap or say &quot;Hey Friday&quot;</div>
                 <div className="mt-2 text-sm text-white/70">The orb enters listening mode and confirms it heard you.</div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-[#12111A]/80 p-6 backdrop-blur">
@@ -266,7 +266,7 @@ export default function Landing() {
               </div>
               <div className="rounded-2xl border border-white/10 bg-[#12111A]/80 p-6 backdrop-blur">
                 <div className="text-sm font-medium">3. Confirm & proceed</div>
-                <div className="mt-2 text-sm text-white/70">Dhvani uses confirm-before-act patterns when outcomes matter.</div>
+                <div className="mt-2 text-sm text-white/70">Friday uses confirm-before-act patterns when outcomes matter.</div>
               </div>
             </div>
           </div>
@@ -283,7 +283,7 @@ export default function Landing() {
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/85">
                   <div className="bg-gradient-to-r from-[#7C3AED] via-[#DB2777] to-[#0EA5E9] bg-clip-text text-transparent">
-                    Dhvani
+                    Friday
                   </div>
                   <div className="mt-1">
                     I see a hallway with a door slightly open on the right. There’s a table ahead at about two steps. Would you like directions to pass safely?
@@ -374,7 +374,7 @@ export default function Landing() {
                 className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#7C3AED] via-[#DB2777] to-[#0EA5E9] px-8 py-4 text-base font-semibold text-white transition duration-200 ease-out hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7C3AED]"
                 style={{ boxShadow: '0 0 30px rgba(124,58,237,0.5)' }}
               >
-                Launch Dhvani AI <span aria-hidden="true" className="ml-2">→</span>
+                Launch Friday AI <span aria-hidden="true" className="ml-2">→</span>
               </Link>
             </div>
           </div>
@@ -383,7 +383,7 @@ export default function Landing() {
 
       <footer className="border-t border-white/5 py-10">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 md:flex-row md:items-center md:justify-between">
-          <div className="text-sm text-white/60">© {new Date().getFullYear()} Dhvani AI</div>
+          <div className="text-sm text-white/60">© {new Date().getFullYear()} Friday AI</div>
           <div className="flex items-center gap-4 text-sm">
             <a className="text-white/60 hover:text-white" href="#hero">
               Back to top

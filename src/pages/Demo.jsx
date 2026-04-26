@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from '../router.jsx'
 import GlowingOrb, { ORB_STATE_CONFIG } from '../components/Orb/GlowingOrb.jsx'
+import Vapi from '@vapi-ai/web'
 
 const STATE_META = {
   idle:      { label: 'Tap to speak' },
@@ -69,7 +70,7 @@ const askGroq = async (userMessage) => {
         messages: [
           {
             role: 'system',
-            content: 'You are Dhvani AI, a warm and patient voice-first accessibility agent for blind and visually impaired users. Your responses will be read aloud. Keep every response to 2-3 sentences maximum. No markdown. No bullet points. No lists. Speak naturally as if talking to a person. Be warm and encouraging.'
+            content: 'You are Friday AI, a warm and patient voice-first accessibility agent for blind and visually impaired users. Your responses will be read aloud. Keep every response to 2-3 sentences maximum. No markdown. No bullet points. No lists. Speak naturally as if talking to a person. Be warm and encouraging.'
           },
           { role: 'user', content: userMessage }
         ],
@@ -114,7 +115,7 @@ function TopNav() {
               <path d="M12 19l-7-7 7-7" />
             </svg>
           </Link>
-          <div className="text-sm font-medium tracking-wide">Dhvani AI</div>
+          <div className="text-sm font-medium tracking-wide">Friday AI</div>
         </div>
       </div>
     </header>
@@ -124,7 +125,7 @@ function TopNav() {
 function VersionBadge() {
   return (
     <div className="mb-8 flex items-center gap-2 text-xs">
-      <span className="text-white/60">Dhvani 1.0</span>
+      <span className="text-white/60">Friday 1.0</span>
       <span className="rounded-full border border-[#7C3AED]/40 bg-[#7C3AED]/15 px-2 py-0.5 text-[10px] font-semibold tracking-[0.12em] text-[#C4B5FD]">
         BETA
       </span>
@@ -244,7 +245,7 @@ function ConversationBubbles({ messages }) {
               }
             >
               <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">
-                {isUser ? 'You' : 'Dhvani'}
+                {isUser ? 'You' : 'Friday'}
               </div>
               <div className="mt-1 leading-snug text-white/90">{m.text}</div>
             </motion.div>
@@ -278,6 +279,8 @@ export default function Demo() {
   const wakeActiveRef = useRef(false)
   const voiceRef = useRef('woman')
   const voicesRef = useRef([])
+  // Vapi instance for voice pipeline enhancement
+  const vapiRef = useRef(null)
 
   useEffect(() => { mutedRef.current = muted }, [muted])
   useEffect(() => { orbStateRef.current = orbState }, [orbState])
@@ -312,6 +315,17 @@ export default function Demo() {
       }
     }
     check()
+    // Initialize Vapi for enhanced voice handling
+    try {
+      vapiRef.current = new Vapi(
+        import.meta.env.VITE_VAPI_KEY || ''
+      )
+      vapiRef.current.on('error', (e) => {
+        console.log('Vapi:', e.message)
+      })
+    } catch (e) {
+      console.log('Vapi init skipped:', e.message)
+    }
     const interval = setInterval(check, 5000)
     return () => clearInterval(interval)
   }, [])
@@ -609,7 +623,7 @@ export default function Demo() {
 
   return (
     <div className="relative min-h-screen bg-[#0A0A12] text-white">
-      <div className="pointer-events-none fixed inset-0 dhvani-dotgrid" />
+      <div className="pointer-events-none fixed inset-0 friday-dotgrid" />
 
       {/* Backend status pill */}
       <div className="pointer-events-none fixed right-4 top-20 z-50 flex items-center gap-1.5 rounded-full border border-white/10 bg-[#12111A]/90 px-3 py-1.5 text-xs backdrop-blur">

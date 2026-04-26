@@ -1,5 +1,5 @@
 {
-  "name": "dhvani-ai",
+  "name": "friday-ai",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,6 +13,7 @@
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.0",
     "@tailwindcss/vite": "^4.2.2",
+    "@vapi-ai/web": "^2.5.2",
     "framer-motion": "^12.38.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

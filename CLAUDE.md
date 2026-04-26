@@ -1,4 +1,4 @@
-# CLAUDE.md — Dhvani AI Project Memory File
+# CLAUDE.md — Friday AI Project Memory File
 # This file helps Claude Code understand the complete project context.
 # Always read this file first before making any changes.
 
@@ -6,7 +6,7 @@
 
 ## PROJECT OVERVIEW
 
-**Project Name:** Dhvani AI
+**Project Name:** Friday AI
 **Tagline:** "No screen. No keyboard. No barrier."
 **Type:** Voice-First AI Accessibility Agent
 **Purpose:** Gives visually impaired and blind users complete control of the internet through natural voice commands
@@ -17,7 +17,7 @@
 
 ## WHAT THIS PROJECT DOES
 
-Dhvani AI is a voice-first web accessibility agent with 3 layers:
+Friday AI is a voice-first web accessibility agent with 3 layers:
 
 **Layer 1 — Voice Input**
 - Uses Web Speech API built into Chrome
@@ -245,7 +245,7 @@ node server.js
 Should show:
 ```
 ✅ Browser ready
-🚀 Dhvani backend on port 3001
+🚀 Friday backend on port 3001
 ```
 
 **Terminal 2 — ngrok (for remote access):**
@@ -346,7 +346,7 @@ git push origin main
 3. WhatsApp voice bot for feature phones
 4. Government portal integration — DigiLocker, UMANG
 5. Self-hosted fine-tuned LLaMA 3B — zero API cost
-6. Dhvani Browser — full Electron-based browser for blind users
+6. Friday Browser — full Electron-based browser for blind users
 7. NVIDIA Riva TTS — more natural Indian voice
 
 ---

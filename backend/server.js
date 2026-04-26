@@ -2,6 +2,7 @@ require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
 const puppeteer = require('puppeteer')
+const { QdrantClient } = require('@qdrant/js-client-rest')
 
 const app = express()
 app.use(cors())
@@ -11,6 +12,12 @@ let browser = null
 let page = null
 
 const GROQ_KEY = process.env.GROQ_API_KEY
+
+// Qdrant for conversation memory
+const qdrant = new QdrantClient({
+  url: process.env.QDRANT_URL || 'https://localhost:6333',
+  apiKey: process.env.QDRANT_API_KEY || ''
+})
 
 // ── INIT BROWSER ──
 async function initBrowser() {
@@ -79,6 +86,21 @@ async function safeTitle(p) {
   try { return await p.evaluate(() => document.title) } catch { return 'Unknown page' }
 }
 
+// Save interaction to Qdrant memory
+async function saveMemory(command, result) {
+  try {
+    await qdrant.upsert('friday_memory', {
+      points: [{
+        id: Date.now(),
+        vector: new Array(384).fill(0).map(() => Math.random()),
+        payload: { command, result, ts: new Date().toISOString() }
+      }]
+    })
+  } catch {
+    // Qdrant optional - does not affect main flow
+  }
+}
+
 // ── SCREENSHOT ──
 async function getScreenshot(p) {
   try {
@@ -114,7 +136,7 @@ async function askGroqDirect(userCommand) {
         messages: [
           {
             role: 'system',
-            content: 'You are Dhvani AI, a warm helpful voice assistant for visually impaired users. Answer questions directly and conversationally in 1-3 sentences. No markdown. No bullet points. Speak naturally.'
+            content: 'You are Friday AI, a warm helpful voice assistant for visually impaired users. Answer questions directly and conversationally in 1-3 sentences. No markdown. No bullet points. Speak naturally.'
           },
           { role: 'user', content: userCommand }
         ],
@@ -132,12 +154,12 @@ async function askGroqDirect(userCommand) {
 async function askGroqVision(screenshot, userCommand, actionDone, pageContext = null) {
   try {
     let contextText = `User said: "${userCommand}". Action taken: ${actionDone}. Describe what you see on screen and confirm what happened.`
-    let systemPrompt = `You are Dhvani AI, a voice assistant for blind users. Give ONE short sentence response only. Maximum 15 words. Be direct and specific. No filler words. No markdown.`
+    let systemPrompt = `You are Friday AI, a voice assistant for blind users. Give ONE short sentence response only. Maximum 15 words. Be direct and specific. No filler words. No markdown.`
 
     if (pageContext) {
       const { mainHeading, linkCount, buttonCount, formCount, topActions } = pageContext
       contextText += ` Page structure: ${mainHeading ? `Heading: "${mainHeading}". ` : ''}${linkCount} links, ${buttonCount} buttons, ${formCount} form${formCount !== 1 ? 's' : ''}. ${topActions.length ? `Top actions: ${topActions.join(', ')}.` : ''} Also tell the user 2 specific things they can do on this page.`
-      systemPrompt = `You are Dhvani AI, a voice assistant for blind users. Describe what the user sees and tell them 2 specific actions they can take. Maximum 2 sentences. Be helpful and specific. No markdown.`
+      systemPrompt = `You are Friday AI, a voice assistant for blind users. Describe what the user sees and tell them 2 specific actions they can take. Maximum 2 sentences. Be helpful and specific. No markdown.`
     }
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -177,6 +199,8 @@ app.post('/command', async (req, res) => {
     'pause', 'mute', 'unmute', 'volume', 'skip', 'rewind',
     'fullscreen', 'back', 'refresh', 'reload', 'read page',
     'read the page', 'describe the page', 'where am i',
+    'read screen', 'read the screen', 'on the screen', 'on screen',
+    'what do you see', 'what can you see', 'describe the screen',
     // Fix 2 — risky commands need to reach the browser chain
     'submit', 'buy', 'purchase', 'delete', 'pay', 'checkout', 'order',
     // Fix 3 — page discovery commands
@@ -431,14 +455,20 @@ app.post('/command', async (req, res) => {
     }
 
     // ── READ PAGE ──
-    else if (cmd.includes('read') || cmd.includes('describe') || cmd.includes('summary')) {
+    else if (cmd.includes('read') || cmd.includes('describe') || cmd.includes('summary') || cmd.includes('screen')) {
       const content = await p.evaluate(() => {
         const title = document.title
         const h1s = Array.from(document.querySelectorAll('h1')).map(h => h.innerText?.trim()).filter(Boolean).slice(0, 2).join('. ')
         const paras = Array.from(document.querySelectorAll('p')).map(p => p.innerText?.trim()).filter(t => t && t.length > 40).slice(0, 3).join(' ')
-        return `Page: ${title}. ${h1s ? 'Headings: ' + h1s + '.' : ''} ${paras}`
-      }).catch(() => 'Could not read the page.')
-      result = content.slice(0, 800)
+        return `${title}. ${h1s ? h1s + '.' : ''} ${paras}`.trim()
+      }).catch(() => '')
+      if (content && content.length > 15) {
+        const narration = await askGroqDirect(
+          `Read this web page to a blind user in 2-3 natural sentences. Be specific about the page name and main content: ${content.slice(0, 600)}`
+        )
+        return res.json({ result: narration || content.slice(0, 400) })
+      }
+      return res.json({ result: `You are on ${await safeTitle(p)}. The page content could not be read. Try saying read headings, read links, or read paragraphs.` })
     }
 
     // ── CLICK ──
@@ -503,6 +533,7 @@ app.post('/command', async (req, res) => {
       if (visionResult) result = visionResult
     }
 
+    saveMemory(command, result)
     res.json({ result })
   } catch (e) {
     res.json({ result: 'Something went wrong: ' + e.message })
@@ -522,6 +553,6 @@ app.get('/status', async (req, res) => {
 // ── START ──
 initBrowser().then(() => {
   app.listen(process.env.PORT || 3001, () => {
-    console.log(`🚀 Dhvani backend on port ${process.env.PORT || 3001}`)
+    console.log(`🚀 Friday backend on port ${process.env.PORT || 3001}`)
   })
 })

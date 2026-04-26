@@ -1,8 +1,8 @@
-# Dhvani AI — Voice-First Accessibility Agent
+# Friday AI — Voice-First Accessibility Agent
 
 <div align="center">
 
-![Dhvani AI](https://img.shields.io/badge/Dhvani-AI-7C3AED?style=for-the-badge&logo=google-chrome&logoColor=white)
+![Friday AI](https://img.shields.io/badge/Dhvani-AI-7C3AED?style=for-the-badge&logo=google-chrome&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
 ![Three.js](https://img.shields.io/badge/Three.js-000000?style=for-the-badge&logo=three.js&logoColor=white)
@@ -23,11 +23,9 @@
 
 ---
 
-## 🎯 What is Dhvani AI?
+## 🎯 What is Friday AI?
 
-**Dhvani** (ध्वनि) means *sound* or *voice* in Sanskrit.
-
-Dhvani AI is a voice-first web accessibility agent built for **285 million visually impaired people** who struggle to use the internet. Users can navigate websites, read content, fill forms, search the web, and get intelligent assistance — entirely through natural voice commands.
+Friday AI is a voice-first web accessibility agent built for **285 million visually impaired people** who struggle to use the internet. Users can navigate websites, read content, fill forms, search the web, and get intelligent assistance — entirely through natural voice commands.
 
 No app download. No screen required. Just speak.
 
@@ -53,7 +51,7 @@ No app download. No screen required. Just speak.
 ```
 User Voice Input (Web Speech API)
         ↓
-   Dhvani Frontend (React + Vite)
+   Friday Frontend (React + Vite)
         ↓
    Groq AI (LLaMA 3.3 70B)  ←→  Puppeteer Backend (Express)
         ↓                              ↓
