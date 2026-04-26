@@ -14,10 +14,15 @@ let page = null
 const GROQ_KEY = process.env.GROQ_API_KEY
 
 // Qdrant for conversation memory
-const qdrant = new QdrantClient({
-  url: process.env.QDRANT_URL || 'https://localhost:6333',
-  apiKey: process.env.QDRANT_API_KEY || ''
-})
+let qdrant = null
+try {
+  qdrant = new QdrantClient({
+    url: process.env.QDRANT_URL || 'http://localhost:5173',
+    apiKey: process.env.QDRANT_API_KEY || ''
+  })
+} catch (e) {
+  console.log('Qdrant skipped:', e.message)
+}
 
 // ── INIT BROWSER ──
 async function initBrowser() {

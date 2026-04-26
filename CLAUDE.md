@@ -100,6 +100,7 @@ The heart of the frontend. Contains:
 - `ConversationBubbles` — shows last 3 messages
 - `HistoryDrawer` — full conversation history slide-up panel
 - `ControlsBar` — mic button, mute button, history button
+- `vapiRef` — Vapi SDK instance (initialised in POLL BACKEND STATUS useEffect, errors caught silently, does NOT replace Web Speech API)
 
 **Orb States:**
 - `idle` — blue, tap to speak
@@ -119,6 +120,7 @@ The backend that controls a real Chrome browser. Contains:
 - `getScreenshot()` — takes JPEG screenshot for Vision AI
 - `askGroqVision()` — sends screenshot to LLaMA 4 Scout, gets description
 - `askGroqDirect()` — answers simple questions without browser
+- `saveMemory()` — fire-and-forget: saves command+result to Qdrant; silently skipped if Qdrant is unreachable
 
 **Commands handled:**
 - Navigate/Open — 15 preset sites + domain matching
@@ -178,10 +180,12 @@ Without this, refreshing `/demo` gives 404 on Vercel.
 | Styling | Tailwind CSS | Free |
 | Voice Input | Web Speech API | Free |
 | Voice Output | Speech Synthesis API | Free |
+| Voice Pipeline (optional) | Vapi (`@vapi-ai/web`) | Free tier |
 | Browser Control | Node.js + Puppeteer | Free |
 | API Server | Express.js | Free |
 | AI Language | Groq — LLaMA 3.3 70B | Free tier |
 | AI Vision | Groq — LLaMA 4 Scout | Free tier |
+| Conversation Memory (optional) | Qdrant (`@qdrant/js-client-rest`) | Free tier |
 | Frontend Host | Vercel | Free |
 | Backend Tunnel | ngrok | Free |
 | Version Control | GitHub | Free |
@@ -194,12 +198,15 @@ Without this, refreshing `/demo` gives 404 on Vercel.
 
 ### Frontend `.env` (in dhvani-ai root):
 ```
-VITE_GROQ_API_KEY=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
+VITE_GROQ_API_KEY=...
+VITE_VAPI_KEY=...          ← Vapi public key (optional — leave blank to disable)
 ```
 
 ### Backend `.env` (in dhvani-ai/backend):
 ```
-GROQ_API_KEY=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
+GROQ_API_KEY=...
+QDRANT_URL=...             ← Qdrant cluster URL (optional — falls back to localhost:6333)
+QDRANT_API_KEY=...         ← Qdrant API key (optional — leave blank for local instance)
 ```
 
 **In Demo.jsx:**
@@ -363,8 +370,10 @@ git push origin main
 8. **Groq free tier** = 14,400 requests/day — enough for demo
 9. **ngrok URL changes** every session on free plan — update Demo.jsx each time
 10. **vercel.json** must stay in root — removing it breaks /demo route on refresh
+11. **Vapi is additive** — initialised once in POLL BACKEND STATUS useEffect; errors caught silently; does NOT replace or touch Web Speech API
+12. **Qdrant is additive** — `saveMemory()` is fire-and-forget called just before `res.json()`; empty catch means it never breaks the main command flow; collection `friday_memory` must exist in Qdrant before writes succeed
 
 ---
 
-*Last updated: April 2026*
+*Last updated: 26 April 2026*
 *Project by Team Code Verse — Saurabh Vishwakarma*

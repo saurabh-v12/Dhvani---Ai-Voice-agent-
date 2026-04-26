@@ -12,7 +12,7 @@ const STATE_META = {
 }
 
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY
-const BACKEND = 'http://localhost:3001'
+const BACKEND = 'https://gerda-wakeful-roseately.ngrok-free.dev'
 
 const VOICE_PROFILES = {
   woman: { rate: 0.88, pitch: 1.05 },
